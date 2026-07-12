@@ -29,11 +29,7 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
         api_key=api_key,
     )
 
-    tools = [
-        {
-            'type': 'code_execution',
-        },
-    ]
+    tools = ['code_execution']
 
     stream = client.interactions.create(
         agent='antigravity-preview-05-2026',
