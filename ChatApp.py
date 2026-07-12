@@ -22,40 +22,8 @@ for message in st.session_state.messages:
             st.markdown(message["content"])
 
 def get_stream(prompt, api_key):
-    stream = run_agent(prompt, api_key=api_key)
-    
-    for event in stream:
-        if getattr(event, 'event_type', None) == 'step.delta':
-            delta = getattr(event, 'delta', None)
-            if delta is not None:
-                delta_type = getattr(delta, 'type', None)
-                # Check for thought summary
-                if delta_type == 'thought_summary':
-                    content = getattr(delta, 'content', None)
-                    if content is not None:
-                        text_val = getattr(content, 'text', '')
-                        if text_val:
-                            yield ('thought', f"{text_val}")
-                # Check for code execution call
-                elif delta_type == 'code_execution_call':
-                    code = getattr(getattr(delta, 'arguments', None), 'code', '')
-                    if code:
-                        yield ('thought', f"\n\n```python\n{code}\n```\n\n")
-                # Check for code execution result
-                elif delta_type == 'code_execution_result':
-                    result = getattr(delta, 'result', '')
-                    if result:
-                        yield ('thought', f"\n\n```text\n{result}\n```\n\n")
-                # Check for function call arguments
-                elif delta_type == 'arguments_delta':
-                    args = getattr(delta, 'arguments', '')
-                    if args:
-                        yield ('thought', f"{args}")
-                # Check for standard text output
-                elif delta_type == 'text':
-                    text_val = getattr(delta, 'text', '')
-                    if text_val:
-                        yield ('text', text_val)
+    result = run_agent(prompt, api_key=api_key)
+    yield ('text', result)
 
 
 # Accept user input
