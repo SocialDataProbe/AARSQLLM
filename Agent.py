@@ -1,5 +1,4 @@
 import os
-import time
 from google import genai
 
 def run_agent(input_text: str = 'Hey this a test to see if the api is working', api_key: str = None):
@@ -36,11 +35,11 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
         },
     ]
 
-    interaction = client.interactions.create(
+    stream = client.interactions.create(
         agent='antigravity-preview-05-2026',
         input=input_text,
         tools=tools,
-        background=True,
+        stream=True,
         environment={
             'type': 'remote',
             'network': {
@@ -81,16 +80,11 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
         },
     )
 
-    # Poll until the interaction completes, then return the output
-    while True:
-        interaction = client.interactions.get(interaction.id)
-        if interaction.status == "completed":
-            return interaction.output_text
-        elif interaction.status == "failed":
-            raise RuntimeError(f"Agent interaction failed: {interaction.error}")
-        time.sleep(5)
+    return stream
 
 if __name__ == "__main__":
+    import os
     test_api_key = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
-    result = run_agent(api_key=test_api_key)
-    print(result)
+    stream = run_agent(api_key=test_api_key)
+    for event in stream:
+        print(event)
