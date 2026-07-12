@@ -58,7 +58,7 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
             'sources': [
                 {
                     'type': 'gcs',
-                    'source': 'gs://asx_aus_sql',
+                    'source': 'gs://asx-corpo-eddies',
                     'target': '/Data',
                 },
                 {
