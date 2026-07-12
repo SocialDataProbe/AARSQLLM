@@ -80,11 +80,11 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
         },
     )
 
-    return stream
+    for event in stream:
+        yield event
 
 if __name__ == "__main__":
     import os
     test_api_key = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
-    stream = run_agent(api_key=test_api_key)
-    for event in stream:
+    for event in run_agent(api_key=test_api_key):
         print(event)
