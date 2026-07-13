@@ -1,4 +1,5 @@
 import os
+import time
 from google import genai
 
 def run_agent(input_text: str = 'Hey this a test to see if the api is working', api_key: str = None):
@@ -116,17 +117,30 @@ def run_context_gatherer(topic: str, api_key: str = None) -> str:
         },
     )
 
-    # Poll until the interaction completes
-    result = interaction.wait()
+    print(f"Research started: {interaction.id}")
+
+    while True:
+        interaction = client.interactions.get(interaction.id)
+        if interaction.status == "completed":
+            break
+        elif interaction.status == "failed":
+            error_msg = getattr(interaction, 'error', 'Unknown error')
+            print(f"Research failed: {error_msg}")
+            return f"Research failed: {error_msg}"
+        time.sleep(10)
 
     # Extract the final text output
     output_text = ''
-    for step in getattr(result, 'steps', []):
-        for part in getattr(step, 'output', []):
-            text = getattr(part, 'text', None)
-            if text:
-                output_text += text
+    if hasattr(interaction, 'output_text'):
+        output_text = interaction.output_text
+    else:
+        for step in getattr(interaction, 'steps', []):
+            for part in getattr(step, 'output', []):
+                text = getattr(part, 'text', None)
+                if text:
+                    output_text += text
 
+    print(output_text.strip())
     return output_text.strip()
 
 if __name__ == "__main__":
