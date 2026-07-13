@@ -23,14 +23,17 @@ with st.sidebar:
                 with st.spinner("Gathering context..."):
                     try:
                         result = run_context_gatherer(topic.strip(), api_key=api_key)
-                        st.session_state["context_result"] = result
                     except Exception as e:
-                        st.session_state["context_result"] = f"Error: {e}"
+                        result = f"Error: {e}"
+                    # Write straight into the widget's OWN key. This must
+                    # happen before the text_area below is instantiated on
+                    # this rerun, otherwise Streamlit will keep showing
+                    # whatever the widget already had from the previous run.
+                    st.session_state["context_output"] = result
 
-        if "context_result" in st.session_state and st.session_state["context_result"]:
+        if st.session_state.get("context_output"):
             st.text_area(
                 "Result (copy below)",
-                value=st.session_state["context_result"],
                 height=300,
                 key="context_output",
             )
@@ -53,7 +56,7 @@ for message in st.session_state.messages:
 
 def get_stream(prompt, api_key):
     stream = run_agent(prompt, api_key=api_key)
-    
+
     for event in stream:
         if getattr(event, 'event_type', None) == 'step.delta':
             delta = getattr(event, 'delta', None)
@@ -104,12 +107,12 @@ if prompt := st.chat_input("Ask a question about ASX-listed Australian companies
     with st.chat_message("assistant"):
         thought_container = st.empty()
         text_placeholder = st.empty()
-        
+
         full_text = ""
         full_thoughts = ""
         thought_expander = None
         thought_placeholder = None
-        
+
         for chunk_type, content in get_stream(prompt, api_key):
             if chunk_type == 'thought':
                 if thought_expander is None:
@@ -121,14 +124,14 @@ if prompt := st.chat_input("Ask a question about ASX-listed Australian companies
             elif chunk_type == 'text':
                 full_text += content
                 text_placeholder.markdown(full_text + "▌")
-                
+
         # Final update to remove the cursor
         if full_text:
             text_placeholder.markdown(full_text)
-    
+
     # Add assistant response to chat history
     st.session_state.messages.append({
-        "role": "assistant", 
+        "role": "assistant",
         "content": full_text,
         "thoughts": full_thoughts
     })

@@ -5,8 +5,11 @@ from typing import Optional, Annotated
 from google import genai
 from google.genai import types
 
-# Database path
-DB_PATH = r"Data/financials_fts.db"
+# Database paths
+DB_PATHS = {
+    "Aus": r"Data/financials_Aus_fts.db",
+    "NZ": r"Data/financials_NZ_fts.db"
+}
 
 # Maximum allowed calls per session
 MAX_CALLS = 30
@@ -60,13 +63,14 @@ def get_usage_stats():
 
 
 def LLM_Query(
+    country: Annotated[str, "The country database to query. MUST be exactly 'Aus' or 'NZ'."],
     company_name: Annotated[str, "The exact company name as it appears in the database (e.g. 'WOOLWORTHS GROUP LTD')."],
     section_name: Annotated[str, "The report section to retrieve (e.g. 'Financial Statements', 'Directors Report')."],
     prompt: Annotated[str, "The analytical question to ask the LLM about the retrieved content."],
     year: Annotated[Optional[str], "Optional reporting year filter ('2023' or '2024'). If omitted, retrieves all years."] = None,
 ) -> str:
     """
-    Retrieves content from the financials database for a given company and section,
+    Retrieves content from the selected financials database for a given company and section,
     then sends it to the LLM along with the user's prompt to produce an answer.
 
     **USAGE LIMIT: This function can only be called 30 times per session.**
@@ -75,6 +79,7 @@ def LLM_Query(
     This tool handles everything: database retrieval + LLM analysis in one call.
 
     Parameters:
+        - country: 'Aus' for Australian companies or 'NZ' for New Zealand companies.
         - company_name: The exact company name as stored in the `fts_reports` table.
         - section_name: The section of the financial report to query.
         - prompt: The question or instruction for the LLM to answer using the content.
@@ -103,9 +108,18 @@ def LLM_Query(
     _save_counter(current_count)
     remaining_after = MAX_CALLS - current_count
 
+    # --- Verify Country Input ---
+    if country not in DB_PATHS:
+        return (
+            f"INPUT ERROR: Invalid country '{country}'. You must specify 'Aus' or 'NZ'.\n\n"
+            f"LLM_Query calls used: {current_count}/{MAX_CALLS} | Remaining: {remaining_after}"
+        )
+    
+    db_path = DB_PATHS[country]
+
     # --- Step 1: Retrieve content from the database ---
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         if year:
@@ -123,13 +137,13 @@ def LLM_Query(
         conn.close()
     except Exception as e:
         return (
-            f"DATABASE ERROR: Failed to query database — {str(e)}\n\n"
+            f"DATABASE ERROR: Failed to query {country} database — {str(e)}\n\n"
             f"LLM_Query calls used: {current_count}/{MAX_CALLS} | Remaining: {remaining_after}"
         )
 
     if not rows:
         return (
-            f"NO DATA FOUND: No records matched company_name='{company_name}', "
+            f"NO DATA FOUND: No records matched country='{country}', company_name='{company_name}', "
             f"section_name='{section_name}'" + (f", year='{year}'" if year else "") + ". "
             "Double-check that the company name and section name are spelled exactly as stored in the database.\n\n"
             f"LLM_Query calls used: {current_count}/{MAX_CALLS} | Remaining: {remaining_after}"
@@ -138,7 +152,7 @@ def LLM_Query(
     # Combine content from all matching rows, labelled by year
     combined_content = ""
     for row_year, content in rows:
-        combined_content += f"\n\n===== {company_name} — {section_name} — {row_year} =====\n\n"
+        combined_content += f"\n\n===== {company_name} ({country}) — {section_name} — {row_year} =====\n\n"
         combined_content += content
 
     # --- Step 2: Send content + prompt to the LLM ---
@@ -151,7 +165,7 @@ def LLM_Query(
 
     system_instruction = (
         "You are a financial analyst. You will be given content extracted from an Australian "
-        "ASIC financial report. Answer the user's question using ONLY the provided content. "
+        "or New Zealand financial report. Answer the user's question using ONLY the provided content. "
         "Be precise, cite specific figures, and present numbers clearly."
     )
 
