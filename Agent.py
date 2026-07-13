@@ -58,7 +58,7 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
             'sources': [
                 {
                     'type': 'gcs',
-                    'source': 'gs://asx-corpo-eddies',
+                    'source': 'gs://asx_aus_sql',
                     'target': '/Data',
                 },
                 {
@@ -82,6 +82,52 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
 
     for event in stream:
         yield event
+
+def run_context_gatherer(topic: str, api_key: str = None) -> str:
+    """Use a background agent with google_search to gather context on a topic."""
+    client = genai.Client(api_key=api_key)
+
+    tools = [
+        {
+            'type': 'google_search',
+        },
+    ]
+
+    interaction = client.interactions.create(
+        agent='antigravity-preview-05-2026',
+        input=topic,
+        background=True,
+        tools=tools,
+        environment={
+            'type': 'remote',
+            'network': {
+                'allowlist': [
+                    {
+                        'domain': 'generativelanguage.googleapis.com',
+                        'transform': [
+                            {
+                                'key': 'x-goog-api-key',
+                                'value': 'GEMINI_API_KEY'
+                            }
+                        ],
+                    }
+                ]
+            },
+        },
+    )
+
+    # Poll until the interaction completes
+    result = interaction.wait()
+
+    # Extract the final text output
+    output_text = ''
+    for step in getattr(result, 'steps', []):
+        for part in getattr(step, 'output', []):
+            text = getattr(part, 'text', None)
+            if text:
+                output_text += text
+
+    return output_text.strip()
 
 if __name__ == "__main__":
     import os

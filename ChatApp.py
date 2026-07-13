@@ -1,9 +1,39 @@
 import streamlit as st
-from Agent import run_agent
+from Agent import run_agent, run_context_gatherer
 
 with st.sidebar:
     api_key = st.text_input("Gemini API Key", key="chatbot_api_key", type="password")
     "[Get a Gemini API key](https://aistudio.google.com/app/apikey)"
+
+    st.divider()
+
+    with st.expander("🔍 Context Gatherer", expanded=False):
+        st.caption("Search the web for context on any topic using the AI agent.")
+        topic = st.text_input(
+            "Topic",
+            placeholder="e.g. Woolworths Group financial outlook 2024",
+            key="context_topic",
+        )
+        if st.button("Search", key="context_search_btn", use_container_width=True):
+            if not api_key:
+                st.warning("Please enter your Gemini API key above first.")
+            elif not topic.strip():
+                st.warning("Please enter a topic to search.")
+            else:
+                with st.spinner("Gathering context..."):
+                    try:
+                        result = run_context_gatherer(topic.strip(), api_key=api_key)
+                        st.session_state["context_result"] = result
+                    except Exception as e:
+                        st.session_state["context_result"] = f"Error: {e}"
+
+        if "context_result" in st.session_state and st.session_state["context_result"]:
+            st.text_area(
+                "Result (copy below)",
+                value=st.session_state["context_result"],
+                height=300,
+                key="context_output",
+            )
 
 st.title("ASX Financial Reports Chatbot")
 st.write("Powered by Google Antigravity Agent API")

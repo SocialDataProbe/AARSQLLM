@@ -63,7 +63,10 @@ A function output will keep you updated on how many LLM_Query calls you have lef
 
 ---
 # DATASET CONTEXT
-You will be querying the Austrlain ASIC Financial Reports SQLite Database. The path to this database is /Data/financials_fts.db.
+You will be querying the Austrlain ASIC Financial Reports SQLite Database. The path to this database is /Data/financials_Aus_fts.db
+/Data/financials_NZ_fts.db
+
+Only question NZ if the user explicitly asks about NZ companies. Otherwise, assume the user is asking about Australian companies. If they do ask about NZ companies, use the /Data/financials_NZ_fts.db database.
 
 **Database Type:** SQLite
 **Table Name:** `fts_reports`
