@@ -97,6 +97,7 @@ def run_context_gatherer(topic: str, api_key: str = None) -> str:
     interaction = client.interactions.create(
         agent='antigravity-preview-05-2026',
         input=topic,
+        system_instruction='You are a SQL information extraction agent. Your primary objective is to fulfill the users explicit request using the absolute minimum number of steps required. You must prioritize direct answers over comprehensive analysis.',
         background=True,
         tools=tools,
         environment={

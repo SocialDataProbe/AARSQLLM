@@ -2,26 +2,37 @@ import sqlite3
 import os
 from typing import Optional, List, Annotated
 
-# Path to the pre-built FTS5 index database (created by build_fts_index.py)
-FTS_DB_PATH = r"Data/financials_fts.db"
+# Paths to the pre-built FTS5 index databases (created by build_fts_index.py)
+DB_PATHS = {
+    "Aus": r"Data/financials_Aus_fts.db",
+    "NZ": r"Data/financials_NZ_fts.db"
+}
 
 def BM25_Search(
+    country: Annotated[str, "The country database to search. MUST be exactly 'Aus' or 'NZ'."],
     keywords: Annotated[str, "Space-separated search keywords for FTS5 full-text search (e.g. 'revenue growth operating'). Supports FTS5 query syntax: use OR between terms for alternatives, double-quote phrases for exact matches (e.g. '\"net profit\" OR revenue')."],
     top_k: Annotated[int, "Number of top results to return, ranked by BM25 relevance score."] = 10,
     year: Annotated[Optional[str], "Optional year filter ('2023' or '2024'). If omitted, searches all years."] = None,
     section_name: Annotated[Optional[str], "Optional section filter (e.g. 'Financial Statements', 'Auditor\\'s Report'). If omitted, searches all sections."] = None,
 ) -> str:
-    # Check that the FTS index exists
-    if not os.path.exists(FTS_DB_PATH):
+    
+    # Verify Country Input
+    if country not in DB_PATHS:
+        return f"INPUT ERROR: Invalid country '{country}'. You must specify 'Aus' or 'NZ'."
+    
+    db_path = DB_PATHS[country]
+
+    # Check that the specific FTS index exists
+    if not os.path.exists(db_path):
         return (
-            "FTS INDEX NOT FOUND: The pre-built FTS5 index database does not exist.\n"
-            f"Expected path: {FTS_DB_PATH}\n"
-            "Run 'python build_fts_index.py' first to create it."
+            f"FTS INDEX NOT FOUND: The pre-built FTS5 index database for {country} does not exist.\n"
+            f"Expected path: {db_path}\n"
+            "Ensure the database files have been created and placed in the correct directory."
         )
 
     try:
         # Connect to the pre-built FTS index (read-only)
-        conn = sqlite3.connect(f"file:{FTS_DB_PATH}?mode=ro", uri=True)
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         cursor = conn.cursor()
 
         # Build the query with optional filters
@@ -78,14 +89,14 @@ def BM25_Search(
         if not results:
             return (
                 f"NO MATCHES: The keywords '{keywords}' did not match any content "
-                f"in the {total_rows} rows searched.\n"
+                f"in the {total_rows} rows searched within the {country} database.\n"
                 f"Filters applied — year: {year or 'all'}, section: {section_name or 'all'}\n"
                 f"TIP: Try broader or alternative keywords."
             )
 
         # Format the output
         output_lines = []
-        output_lines.append(f"BM25 SEARCH RESULTS — Top {len(results)} of {total_rows} rows searched")
+        output_lines.append(f"BM25 SEARCH RESULTS — Top {len(results)} of {total_rows} rows searched in the {country} database")
         output_lines.append(f"Keywords: {keywords}")
 
         filter_parts = []
@@ -99,7 +110,7 @@ def BM25_Search(
 
         for i, (cname, yr, sec, score) in enumerate(results, 1):
             output_lines.append(f"\n[{i}] Score: {score:.4f}")
-            output_lines.append(f"    Company:  {cname}")
+            output_lines.append(f"    Company:  {cname} ({country})")
             output_lines.append(f"    Year:     {yr}")
             output_lines.append(f"    Section:  {sec}")
             output_lines.append("-" * 80)
