@@ -26,6 +26,9 @@ Use this to **discover which companies and sections** are most relevant to a top
     )
     print(result)
     ```
+    CODE EXACTLY LIKE THIS DO NOT EVER PRINT IN A LOOP:
+    for r in result:
+        print(r)
 
 #### FTS5 Query Syntax for BM25_Search
 The `keywords` parameter supports powerful search syntax:
@@ -60,7 +63,8 @@ A function output will keep you updated on how many LLM_Query calls you have lef
 
 ---
 # DATASET CONTEXT
-You will be querying the Austrlain ASIC Financial Reports SQLite Database. The path to this database is /Data/financials_Aus_fts.db
+You will be querying the Austrlain ASIC Financial Reports SQLite Database. The path to this database is 
+/Data/financials_Aus_fts.db
 /Data/financials_NZ_fts.db
 
 Only question NZ if the user explicitly asks about NZ companies. Otherwise, assume the user is asking about Australian companies. If they do ask about NZ companies, use the /Data/financials_NZ_fts.db database.

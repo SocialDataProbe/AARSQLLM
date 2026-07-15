@@ -156,12 +156,9 @@ def LLM_Query(
         combined_content += content
 
     # --- Step 2: Send content + prompt to the LLM ---
-    api_key = os.environ.get("GEMINI_API_KEY")
-
-    client = genai.Client(
-        vertexai=False,
-        api_key=api_key,
-    )
+    #api_key = os.environ.get("GEMINI_API_KEY")
+    os.environ["GEMINI_API_KEY"] = "DUMMY_KEY"
+    client = genai.Client()
 
     system_instruction = (
         "You are a financial analyst. You will be given content extracted from an Australian "

@@ -2,7 +2,7 @@ import os
 import time
 from google import genai
 
-def run_agent(input_text: str = 'Hey this a test to see if the api is working', api_key: str = None):
+def run_agent(input_text: str = 'Hey this a test', api_key: str = None, env_id: str = None):
     # Define file paths relative to this script's location
     base_dir = os.path.dirname(os.path.abspath(__file__))
     agents_path = os.path.join(base_dir, ".agents", "AGENTS.md")
@@ -20,15 +20,7 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
     with open(llm_path, 'r', encoding='utf-8') as f:
         LLM_content = f.read()
 
-    if api_key:
-        LLM_content = LLM_content.replace(
-            'api_key = os.environ.get("GEMINI_API_KEY")',
-            f'api_key = "{api_key}"'
-        )
-
-    client = genai.Client(
-        api_key=api_key,
-    )
+    client = genai.Client(api_key=api_key)
 
     tools = [
         {
@@ -36,52 +28,51 @@ def run_agent(input_text: str = 'Hey this a test to see if the api is working', 
         },
     ]
 
-    stream = client.interactions.create(
-        agent='antigravity-preview-05-2026',
-        input=input_text,
-        tools=tools,
-        stream=True,
-        environment={
+    if env_id:
+        # If the user provided an ID, just pass the string to connect to it
+        environment_payload = env_id
+    else:
+        # Otherwise, build the new environment from scratch
+        environment_payload = {
             'type': 'remote',
             'network': {
                 'allowlist': [
                     {
                         'domain': 'generativelanguage.googleapis.com',
-                        'transform': [
-                            {
-                                'key': 'x-goog-api-key',
-                                'value': 'GEMINI_API_KEY'
-                            }
-                        ],
+                        'transform': [{"x-goog-api-key": api_key}],
                     }
                 ]
             },
             'sources': [
-                {
-                    'type': 'gcs',
-                    'source': 'gs://asx_aus_sql',
-                    'target': '/Data',
-                },
-                {
-                    'type': 'inline',
-                    'target': '/.agents/AGENTS.md',
-                    'content': agents_content,
-                },
-                {
-                    'type': 'inline',
-                    'target': '/BM25_Search.py',
-                    'content': BM25_content,
-                },
-                {
-                    'type': 'inline',
-                    'target': '/LLM_Query.py',
-                    'content': LLM_content,
-                }
+                {'type': 'gcs', 'source': 'gs://asx_aus_sql', 'target': '/Data'},
+                {'type': 'inline', 'target': '/.agents/AGENTS.md', 'content': agents_content},
+                {'type': 'inline', 'target': '/BM25_Search.py', 'content': BM25_content},
+                {'type': 'inline', 'target': '/LLM_Query.py', 'content': LLM_content}
             ],
-        },
+        }
+
+    stream = client.interactions.create(
+        agent='antigravity-preview-05-2026',
+        system_instruction='Before responding, read /.agents/AGENTS.md in the sandbox and follow the instructions exactly.',
+        input=input_text,
+        tools=tools,
+        stream=True,
+        environment=environment_payload,
     )
 
+    env_id_yielded = False
+
     for event in stream:
+        # Look for the interaction object and grab the environment_id safely
+        if hasattr(event, 'interaction') and hasattr(event.interaction, 'environment_id'):
+            current_env_id = event.interaction.environment_id
+            
+            # Yield it to the frontend only once
+            if current_env_id and not env_id_yielded:
+                yield {"type": "env_id", "id": current_env_id}
+                env_id_yielded = True
+
+        # Yield the standard event chunks for your chat UI
         yield event
 
 def run_context_gatherer(topic: str, api_key: str = None) -> str:
@@ -97,7 +88,6 @@ def run_context_gatherer(topic: str, api_key: str = None) -> str:
     interaction = client.interactions.create(
         agent='antigravity-preview-05-2026',
         input=topic,
-        system_instruction='You are a SQL information extraction agent. Your primary objective is to fulfill the users explicit request using the absolute minimum number of steps required. You must prioritize direct answers over comprehensive analysis.',
         background=True,
         tools=tools,
         environment={
@@ -107,10 +97,7 @@ def run_context_gatherer(topic: str, api_key: str = None) -> str:
                     {
                         'domain': 'generativelanguage.googleapis.com',
                         'transform': [
-                            {
-                                'key': 'x-goog-api-key',
-                                'value': 'GEMINI_API_KEY'
-                            }
+                            {"x-goog-api-key": api_key}
                         ],
                     }
                 ]
@@ -143,9 +130,3 @@ def run_context_gatherer(topic: str, api_key: str = None) -> str:
 
     print(output_text.strip())
     return output_text.strip()
-
-if __name__ == "__main__":
-    import os
-    test_api_key = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
-    for event in run_agent(api_key=test_api_key):
-        print(event)

@@ -1,10 +1,36 @@
 import streamlit as st
 from Agent import run_agent, run_context_gatherer
 
+# Initialize session state for the active environment ID
+if "active_env_id" not in st.session_state:
+    st.session_state.active_env_id = None
+
 with st.sidebar:
     api_key = st.text_input("Gemini API Key", key="chatbot_api_key", type="password")
     "[Get a Gemini API key](https://aistudio.google.com/app/apikey)"
+    
+    st.divider()
+    
+    # WORKFLOW STEP 1: The UI
+    st.subheader("Environment Settings")
+    manual_env_id = st.text_input(
+        "Resume Environment ID (Optional)", 
+        help="Paste an ID from a previous session to resume it. Leave blank to start fresh."
+    )
 
+    # Create an empty placeholder for the Environment ID
+    env_id_placeholder = st.empty()
+    
+    # Display the active ID so the user can copy it for next time
+    if st.session_state.active_env_id:
+        env_id_placeholder.success(f"**Current Environment ID:**\n`{st.session_state.active_env_id}`\n\n*Copy this to resume your session later!*")
+
+    if st.button("Clear API Key & Chat"):
+        st.session_state.chatbot_api_key = ""
+        st.session_state.messages = []
+        st.session_state.active_env_id = None # Clear the ID too
+        st.rerun()
+        
     st.divider()
 
     with st.expander("🔍 Context Gatherer", expanded=False):
@@ -54,10 +80,17 @@ for message in st.session_state.messages:
         if message.get("content"):
             st.markdown(message["content"])
 
-def get_stream(prompt, api_key):
-    stream = run_agent(prompt, api_key=api_key)
+def get_stream(prompt, api_key, env_id):
+    stream = run_agent(prompt, api_key=api_key, env_id=env_id)
 
     for event in stream:
+        # 1. Extract the environment ID from our custom dictionary
+        if isinstance(event, dict) and event.get("type") == "env_id":
+            if not st.session_state.active_env_id:
+                st.session_state.active_env_id = event["id"]
+            continue
+
+        # 2. Process the text and thought deltas
         if getattr(event, 'event_type', None) == 'step.delta':
             delta = getattr(event, 'delta', None)
             if delta is not None:
@@ -97,8 +130,13 @@ if prompt := st.chat_input("Ask a question about ASX-listed Australian companies
         st.info("Please add your Gemini API key to continue.")
         st.stop()
 
+    # If the user pasted an ID in the sidebar, use that. 
+    # Otherwise, use the one we saved in session state (if any).
+    target_env_id = manual_env_id if manual_env_id else st.session_state.active_env_id
+
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
+
     # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -113,7 +151,7 @@ if prompt := st.chat_input("Ask a question about ASX-listed Australian companies
         thought_expander = None
         thought_placeholder = None
 
-        for chunk_type, content in get_stream(prompt, api_key):
+        for chunk_type, content in get_stream(prompt, api_key, target_env_id):
             if chunk_type == 'thought':
                 if thought_expander is None:
                     with thought_container:
@@ -135,3 +173,6 @@ if prompt := st.chat_input("Ask a question about ASX-listed Australian companies
         "content": full_text,
         "thoughts": full_thoughts
     })
+
+    if st.session_state.active_env_id:
+        env_id_placeholder.success(f"**Current Environment ID:**\n`{st.session_state.active_env_id}`\n\n*Copy this to resume your session later!*")
