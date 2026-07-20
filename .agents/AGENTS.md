@@ -16,6 +16,8 @@ How to use BM25_Search:
     - **Returns:** A ranked list of matching rows with company_name, year, section_name, and BM25 relevance score. Does NOT return content.
     - **Example Usage:**
     ```python
+    import sys
+    sys.path.append('.')
     from BM25_Search import BM25_Search
     result = BM25_Search(
         country= "Aus",
@@ -24,7 +26,12 @@ How to use BM25_Search:
         year="2024",
         section_name="Financial Statements"
     )
-    print(result) # Print directly. DO NOT ever iterate and print in a for-loop.
+    print(result)
+    ```
+    **CODE EXACTLY LIKE THIS DO NOT EVER PRINT IN A LOOP:**
+    for r in result:
+        print(r)
+
 
 The `keywords` parameter supports the following search syntax:
     - **AND (default):** `"revenue growth"` — matches rows containing BOTH "revenue" AND "growth".
@@ -44,6 +51,8 @@ How to use LLM_Query:
     - **Parameters:** `country` (MUST be exactly 'Aus' or 'NZ'), `company_name` (exact name from DB), `section_name` (Must be one of: "Business Review & Management Commentary", "Directors Report", "Remuneration Report", "Financial Statements", "Notes to Financial Statements", "Directors' Declaration", "Auditor's Report", "Other Information"), `prompt` (your analytical question), and optionally `year` ('2023', '2024', '2025').
     - **Example Usage:**
     ```python
+    import sys
+    sys.path.append('.')
     from LLM_Query import LLM_Query
     result = LLM_Query(
         country="Aus", 

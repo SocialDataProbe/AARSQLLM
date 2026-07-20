@@ -14,7 +14,7 @@ with st.sidebar:
     # WORKFLOW STEP 1: The UI
     st.subheader("Environment Settings")
     manual_env_id = st.text_input(
-        "Resume Environment ID (Optional)", 
+        "Resume Environment ID (This is a work in progress, you are more likely to get better results if you start a new session)", 
         help="Paste an ID from a previous session to resume it. Leave blank to start fresh."
     )
 
@@ -23,13 +23,14 @@ with st.sidebar:
     
     # Display the active ID so the user can copy it for next time
     if st.session_state.active_env_id:
-        env_id_placeholder.success(f"**Current Environment ID:**\n`{st.session_state.active_env_id}`\n\n*Copy this to resume your session later!*")
+        env_id_placeholder.success(f"**Current Environment ID:**\n`{st.session_state.active_env_id}`\n\n*Copy this into 'Resume Environment ID' for much faster inference!*")
 
-    if st.button("Clear API Key & Chat"):
+    def clear_chat():
         st.session_state.chatbot_api_key = ""
         st.session_state.messages = []
         st.session_state.active_env_id = None # Clear the ID too
-        st.rerun()
+        
+    st.button("Clear API Key & Chat", on_click=clear_chat)
         
     st.divider()
 
