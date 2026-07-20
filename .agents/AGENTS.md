@@ -28,8 +28,8 @@ How to use BM25_Search:
     )
     print(result)
     ```
-    **CODE EXACTLY LIKE THIS DO NOT EVER PRINT IN A LOOP:**
-    for r in result:
+    This function output will be a list. Therefore, there is no need to write a for loop to iterate through it. **DO NOT EVER PRINT IN A LOOP like this:**
+    for r in results:
         print(r)
 
 

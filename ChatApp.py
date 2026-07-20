@@ -87,8 +87,7 @@ def get_stream(prompt, api_key, env_id):
     for event in stream:
         # 1. Extract the environment ID from our custom dictionary
         if isinstance(event, dict) and event.get("type") == "env_id":
-            if not st.session_state.active_env_id:
-                st.session_state.active_env_id = event["id"]
+            st.session_state.active_env_id = event["id"]
             continue
 
         # 2. Process the text and thought deltas
@@ -131,9 +130,9 @@ if prompt := st.chat_input("Ask a question about ASX-listed Australian companies
         st.info("Please add your Gemini API key to continue.")
         st.stop()
 
-    # If the user pasted an ID in the sidebar, use that. 
-    # Otherwise, use the one we saved in session state (if any).
-    target_env_id = manual_env_id if manual_env_id else st.session_state.active_env_id
+    # Only use the environment ID if the user explicitly provided it in the sidebar.
+    # Otherwise, pass None to start a fresh environment.
+    target_env_id = manual_env_id if manual_env_id else None
 
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
